@@ -1,5 +1,5 @@
 locals {
-  tags            = { ProjectName = "Information Assistant", BuildNumber = var.buildNumber }
+  tags            = { ProjectName = "Knowledge Management Assistant", BuildNumber = var.buildNumber, Owner = "Nitesh Soni" }
   azure_roles     = jsondecode(file("${path.module}/azure_roles.json"))
   selected_roles  = ["CognitiveServicesOpenAIUser", "StorageBlobDataReader", "StorageBlobDataContributor", "SearchIndexDataReader", "SearchIndexDataContributor"]
 }
@@ -14,10 +14,14 @@ resource "random_string" "random" {
 }
 
 // Organize resources in a resource group
-resource "azurerm_resource_group" "rg" {
-  name     = var.resourceGroupName != "" ? var.resourceGroupName : "infoasst-${var.environmentName}"
-  location = var.location
-  tags     = local.tags
+//resource "azurerm_resource_group" "rg" {
+//  name     = var.resourceGroupName != "" ? var.resourceGroupName : "infoasst-${var.environmentName}"
+//  location = var.location
+//  tags     = local.tags
+//}
+
+data "azurerm_resource_group" "rg" {
+  name = var.resourceGroupName
 }
 
 module "entraObjects" {
@@ -40,7 +44,7 @@ module "logging" {
   location                = var.location
   tags                    = local.tags
   skuName                 = "PerGB2018"
-  resourceGroupName       = azurerm_resource_group.rg.name
+  resourceGroupName       = data.azurerm_resource_group.rg.name
 }
 
 module "storage" {
@@ -51,7 +55,7 @@ module "storage" {
   accessTier            = "Hot"
   allowBlobPublicAccess = false
   publicNetworkAccess   = true
-  resourceGroupName     = azurerm_resource_group.rg.name
+  resourceGroupName     = data.azurerm_resource_group.rg.name
   keyVaultId            = module.kvModule.keyVaultId 
   deleteRetentionPolicy = {
     days = 7
@@ -73,8 +77,8 @@ module "enrichmentApp" {
   }
   kind                                      = "linux"
   reserved                                  = true
-  resourceGroupName                         = azurerm_resource_group.rg.name
-  storageAccountId                          = "/subscriptions/${var.subscriptionId}/resourceGroups/${azurerm_resource_group.rg.name}/providers/Microsoft.Storage/storageAccounts/${module.storage.name}/services/queue/queues/${var.embeddingsQueue}"
+  resourceGroupName                         = data.azurerm_resource_group.rg.name
+  storageAccountId                          = "/subscriptions/${var.subscriptionId}/resourceGroups/${data.azurerm_resource_group.rg.name}/providers/Microsoft.Storage/storageAccounts/${module.storage.name}/services/queue/queues/${var.embeddingsQueue}"
   scmDoBuildDuringDeployment                = true
   managedIdentity                           = true
   logAnalyticsWorkspaceResourceId           = module.logging.logAnalyticsId
@@ -121,7 +125,7 @@ module "backend" {
     capacity                          = 1
   }
   kind                                = "linux"
-  resourceGroupName                   = azurerm_resource_group.rg.name
+  resourceGroupName                   = data.azurerm_resource_group.rg.name
   location                            = var.location
   tags                                = merge(local.tags, { "azd-service-name" = "backend" })
   runtimeVersion                      = "3.10" 
@@ -143,7 +147,7 @@ module "backend" {
     AZURE_BLOB_STORAGE_CONTAINER            = var.contentContainerName
     AZURE_BLOB_STORAGE_UPLOAD_CONTAINER     = var.uploadContainerName
     AZURE_OPENAI_SERVICE                    = var.useExistingAOAIService ? var.azureOpenAIServiceName : module.openaiServices.name
-    AZURE_OPENAI_RESOURCE_GROUP             = var.useExistingAOAIService ? var.azureOpenAIResourceGroup : azurerm_resource_group.rg.name
+    AZURE_OPENAI_RESOURCE_GROUP             = var.useExistingAOAIService ? var.azureOpenAIResourceGroup : data.azurerm_resource_group.rg.name
     AZURE_OPENAI_ENDPOINT                   = var.useExistingAOAIService ? "https://${var.azureOpenAIServiceName}.${var.azure_openai_domain}/" : module.openaiServices.endpoint
     AZURE_OPENAI_AUTHORITY_HOST             = var.azure_openai_authority_host
     AZURE_ARM_MANAGEMENT_API                = var.azure_arm_management_api
@@ -189,7 +193,7 @@ module "openaiServices" {
   name     = var.openAIServiceName != "" ? var.openAIServiceName : "infoasst-aoai-${random_string.random.result}"
   location = var.location
   tags     = local.tags
-  resourceGroupName = azurerm_resource_group.rg.name
+  resourceGroupName = data.azurerm_resource_group.rg.name
   keyVaultId = module.kvModule.keyVaultId
   openaiServiceKey = var.azureOpenAIServiceKey
   useExistingAOAIService = var.useExistingAOAIService
@@ -227,7 +231,7 @@ module "formrecognizer" {
   location = var.location
   tags     = local.tags
   customSubDomainName = "infoasst-fr-${random_string.random.result}"
-  resourceGroupName = azurerm_resource_group.rg.name
+  resourceGroupName = data.azurerm_resource_group.rg.name
   keyVaultId = module.kvModule.keyVaultId 
 }
 
@@ -238,7 +242,7 @@ module "cognitiveServices" {
   location = var.location 
   tags     = local.tags
   keyVaultId = module.kvModule.keyVaultId 
-  resourceGroupName = azurerm_resource_group.rg.name
+  resourceGroupName = data.azurerm_resource_group.rg.name
 }
 
 module "searchServices" {
@@ -250,7 +254,7 @@ module "searchServices" {
   # aad_auth_failure_mode = "http401WithBearerChallenge"
   # sku_name = var.searchServicesSkuName
   semanticSearch = var.use_semantic_reranker ? "free" : null
-  resourceGroupName = azurerm_resource_group.rg.name
+  resourceGroupName = data.azurerm_resource_group.rg.name
   keyVaultId = module.kvModule.keyVaultId
   azure_search_domain = var.azure_search_domain
 }
@@ -263,7 +267,7 @@ module "cosmosdb" {
   tags                = local.tags
   logDatabaseName   = "statusdb"
   logContainerName  = "statuscontainer"
-  resourceGroupName = azurerm_resource_group.rg.name
+  resourceGroupName = data.azurerm_resource_group.rg.name
   keyVaultId        = module.kvModule.keyVaultId  
 }
 
@@ -285,7 +289,7 @@ module "functions" {
   }
   kind                                  = "linux"
   runtime                               = "python"
-  resourceGroupName                     = azurerm_resource_group.rg.name
+  resourceGroupName                     = data.azurerm_resource_group.rg.name
   appInsightsConnectionString           = module.logging.applicationInsightsConnectionString
   appInsightsInstrumentationKey         = module.logging.applicationInsightsInstrumentationKey
   blobStorageAccountName                = module.storage.name
@@ -338,9 +342,9 @@ module "functions" {
 module "sharepoint" {
   count                               = var.enableSharePointConnector ? 1 : 0
   source                              = "./core/sharepoint"
-  location                            = azurerm_resource_group.rg.location
-  resource_group_name                 = azurerm_resource_group.rg.name
-  resource_group_id                   = azurerm_resource_group.rg.id
+  location                            = data.azurerm_resource_group.rg.location
+  resource_group_name                 = data.azurerm_resource_group.rg.name
+  resource_group_id                   = data.azurerm_resource_group.rg.id
   subscription_id                     = data.azurerm_client_config.current.subscription_id
   storage_account_name                = module.storage.name
   storage_access_key                  = module.storage.storage_account_access_key
@@ -355,8 +359,8 @@ module "sharepoint" {
 module "video_indexer" {
   count                               = var.enableMultimedia ? 1 : 0
   source                              = "./core/videoindexer"
-  location                            = azurerm_resource_group.rg.location
-  resource_group_name                 = azurerm_resource_group.rg.name
+  location                            = data.azurerm_resource_group.rg.location
+  resource_group_name                 = data.azurerm_resource_group.rg.name
   subscription_id                     = data.azurerm_client_config.current.subscription_id
   random_string                       = random_string.random.result
   tags                                = local.tags
@@ -370,12 +374,12 @@ module "userRoles" {
   source = "./core/security/role"
   for_each = { for role in local.selected_roles : role => { role_definition_id = local.azure_roles[role] } }
 
-  scope            = azurerm_resource_group.rg.id
+  scope            = data.azurerm_resource_group.rg.id
   principalId      = data.azurerm_client_config.current.object_id 
   roleDefinitionId = each.value.role_definition_id
   principalType    = var.isInAutomation ? "ServicePrincipal" : "User"
   subscriptionId   = data.azurerm_client_config.current.subscription_id
-  resourceGroupId  = azurerm_resource_group.rg.id
+  resourceGroupId  = data.azurerm_resource_group.rg.id
 }
 
 data "azurerm_resource_group" "existing" {
@@ -387,45 +391,45 @@ data "azurerm_resource_group" "existing" {
 module "openAiRoleBackend" {
   source = "./core/security/role"
 
-  scope            = var.useExistingAOAIService ? data.azurerm_resource_group.existing[0].id : azurerm_resource_group.rg.id
+  scope            = var.useExistingAOAIService ? data.azurerm_resource_group.existing[0].id : data.azurerm_resource_group.rg.id
   principalId      = module.backend.identityPrincipalId
   roleDefinitionId = local.azure_roles.CognitiveServicesOpenAIUser
   principalType    = "ServicePrincipal"
   subscriptionId   = data.azurerm_client_config.current.subscription_id
-  resourceGroupId  = azurerm_resource_group.rg.id
+  resourceGroupId  = data.azurerm_resource_group.rg.id
 }
 
 module "storageRoleBackend" {
   source = "./core/security/role"
 
-  scope            = azurerm_resource_group.rg.id
+  scope            = data.azurerm_resource_group.rg.id
   principalId      = module.backend.identityPrincipalId
   roleDefinitionId = local.azure_roles.StorageBlobDataReader
   principalType    = "ServicePrincipal"
   subscriptionId   = data.azurerm_client_config.current.subscription_id
-  resourceGroupId  = azurerm_resource_group.rg.id
+  resourceGroupId  = data.azurerm_resource_group.rg.id
 }
 
 module "searchRoleBackend" {
   source = "./core/security/role"
 
-  scope            = azurerm_resource_group.rg.id
+  scope            = data.azurerm_resource_group.rg.id
   principalId      = module.backend.identityPrincipalId
   roleDefinitionId = local.azure_roles.SearchIndexDataReader
   principalType    = "ServicePrincipal"
   subscriptionId   = data.azurerm_client_config.current.subscription_id
-  resourceGroupId  = azurerm_resource_group.rg.id
+  resourceGroupId  = data.azurerm_resource_group.rg.id
 }
 
 module "storageRoleFunc" {
   source = "./core/security/role"
 
-  scope            = azurerm_resource_group.rg.id
+  scope            = data.azurerm_resource_group.rg.id
   principalId      = module.functions.function_app_identity_principal_id
   roleDefinitionId = local.azure_roles.StorageBlobDataReader
   principalType    = "ServicePrincipal"
   subscriptionId   = data.azurerm_client_config.current.subscription_id
-  resourceGroupId  = azurerm_resource_group.rg.id
+  resourceGroupId  = data.azurerm_resource_group.rg.id
 }
 
 module "aviRoleBackend" {
@@ -436,7 +440,7 @@ module "aviRoleBackend" {
   roleDefinitionId  = local.azure_roles.Contributor
   principalType     = "ServicePrincipal"
   subscriptionId    = data.azurerm_client_config.current.subscription_id
-  resourceGroupId   = azurerm_resource_group.rg.id 
+  resourceGroupId   = data.azurerm_resource_group.rg.id 
 }
 
 # // MANAGEMENT SERVICE PRINCIPAL ROLES
@@ -445,12 +449,12 @@ module "openAiRoleMgmt" {
   # If leveraging an existing Azure OpenAI service, only make this assignment if not under automation.
   # When under automation and using an existing Azure OpenAI service, this will result in a duplicate assignment error.
   count = var.useExistingAOAIService ? var.isInAutomation ? 0 : 1 : 1
-  scope = var.useExistingAOAIService ? data.azurerm_resource_group.existing[0].id : azurerm_resource_group.rg.id
+  scope = var.useExistingAOAIService ? data.azurerm_resource_group.existing[0].id : data.azurerm_resource_group.rg.id
   principalId     = module.entraObjects.azure_ad_mgmt_sp_id
   roleDefinitionId = local.azure_roles.CognitiveServicesOpenAIUser
   principalType   = "ServicePrincipal"
   subscriptionId   = data.azurerm_client_config.current.subscription_id
-  resourceGroupId  = azurerm_resource_group.rg.id
+  resourceGroupId  = data.azurerm_resource_group.rg.id
 }
 
 module "azMonitor" {
@@ -458,8 +462,8 @@ module "azMonitor" {
   logAnalyticsName  = module.logging.logAnalyticsName
   location          = var.location
   logWorkbookName   = "infoasst-lw-${random_string.random.result}"
-  resourceGroupName = azurerm_resource_group.rg.name 
-  componentResource = "/subscriptions/${var.subscriptionId}/resourceGroups/${azurerm_resource_group.rg.name}/providers/Microsoft.OperationalInsights/workspaces/${module.logging.logAnalyticsName}"
+  resourceGroupName = data.azurerm_resource_group.rg.name 
+  componentResource = "/subscriptions/${var.subscriptionId}/resourceGroups/${data.azurerm_resource_group.rg.name}/providers/Microsoft.OperationalInsights/workspaces/${module.logging.logAnalyticsName}"
 }
 
 module "kvModule" {
@@ -469,17 +473,17 @@ module "kvModule" {
   kvAccessObjectId  = data.azurerm_client_config.current.object_id 
   spClientSecret    = module.entraObjects.azure_ad_mgmt_app_secret 
   subscriptionId    = var.subscriptionId
-  resourceGroupId   = azurerm_resource_group.rg.id 
-  resourceGroupName = azurerm_resource_group.rg.name
+  resourceGroupId   = data.azurerm_resource_group.rg.id 
+  resourceGroupName = data.azurerm_resource_group.rg.name
   tags              = local.tags
 }
 
 module "bingSearch" {
   source                        = "./core/ai/bingSearch"
   name                          = "infoasst-bing-${random_string.random.result}"
-  resourceGroupName             = azurerm_resource_group.rg.name
+  resourceGroupName             = data.azurerm_resource_group.rg.name
   tags                          = local.tags
-  sku                           = "S1" //supported SKUs can be found at https://www.microsoft.com/en-us/bing/apis/pricing
+  sku                           = "F1" //supported SKUs can be found at https://www.microsoft.com/en-us/bing/apis/pricing
   arm_template_schema_mgmt_api  = var.arm_template_schema_mgmt_api
   keyVaultId                    = module.kvModule.keyVaultId
   enableWebChat                 = var.enableWebChat
@@ -489,7 +493,7 @@ module "bingSearch" {
 resource "azurerm_resource_group_template_deployment" "customer_attribution" {
   count               = var.cuaEnabled ? 1 : 0
   name                = "pid-${var.cuaId}"
-  resource_group_name = azurerm_resource_group.rg.name
+  resource_group_name = data.azurerm_resource_group.rg.name
   deployment_mode     = "Incremental"
   template_content    = <<TEMPLATE
 {

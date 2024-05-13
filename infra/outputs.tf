@@ -44,7 +44,7 @@ output "BACKEND_NAME" {
 }
 
 output "RESOURCE_GROUP_NAME" {
-  value = azurerm_resource_group.rg.name
+  value = data.azurerm_resource_group.rg.name
 }
 
 output "AZURE_OPENAI_CHAT_GPT_DEPLOYMENT" {
@@ -52,7 +52,7 @@ output "AZURE_OPENAI_CHAT_GPT_DEPLOYMENT" {
 }
 
 output "AZURE_OPENAI_RESOURCE_GROUP" {
-  value = var.useExistingAOAIService ? var.azureOpenAIResourceGroup : azurerm_resource_group.rg.name
+  value = var.useExistingAOAIService ? var.azureOpenAIResourceGroup : data.azurerm_resource_group.rg.name
 }
 
 output "AZURE_FUNCTION_APP_NAME" {

@@ -4,7 +4,7 @@ variable "randomString" {
 
 variable "requireWebsiteSecurityMembership" {
   type = bool
-  default = false
+  default = true
 }
 
 variable "azure_websites_domain" {

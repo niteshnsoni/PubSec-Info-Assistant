@@ -31,9 +31,9 @@ import React from "react";
 const Chat = () => {
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
     const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false);
-    const [retrieveCount, setRetrieveCount] = useState<number>(5);
-    const [useSuggestFollowupQuestions, setUseSuggestFollowupQuestions] = useState<boolean>(false);
-    const [userPersona, setUserPersona] = useState<string>("analyst");
+    const [retrieveCount, setRetrieveCount] = useState<number>(10);
+    const [useSuggestFollowupQuestions, setUseSuggestFollowupQuestions] = useState<boolean>(true);
+    const [userPersona, setUserPersona] = useState<string>("system");
     const [systemPersona, setSystemPersona] = useState<string>("an Assistant");
     // Setting responseLength to 2048 by default, this will effect the default display of the ResponseLengthButtonGroup below.
     // It must match a valid value of one of the buttons in the ResponseLengthButtonGroup.tsx file. 
@@ -318,25 +318,25 @@ const Chat = () => {
                                     <div className={styles.chatEmptyStateHeader}> 
                                         <BuildingMultipleFilled fontSize={"100px"} primaryFill={"rgba(27, 74, 239, 1)"} aria-hidden="true" aria-label="Chat with your Work Data logo" />
                                         </div>
-                                    <h1 className={styles.chatEmptyStateTitle}>Chat with your work data</h1>
+                                    <h1 className={styles.chatEmptyStateTitle}>Have a conversation with your work documents</h1>
                                 </div>
                             : activeChatMode == ChatMode.WorkPlusWeb ?
                                 <div>
                                     <div className={styles.chatEmptyStateHeader}> 
                                         <BuildingMultipleFilled fontSize={"80px"} primaryFill={"rgba(27, 74, 239, 1)"} aria-hidden="true" aria-label="Chat with your Work and Web Data logo" /><AddFilled fontSize={"50px"} primaryFill={"rgba(0, 0, 0, 0.7)"} aria-hidden="true" aria-label=""/><GlobeFilled fontSize={"80px"} primaryFill={"rgba(24, 141, 69, 1)"} aria-hidden="true" aria-label="" />
                                     </div>
-                                    <h1 className={styles.chatEmptyStateTitle}>Chat with your work and web data</h1>
+                                    <h1 className={styles.chatEmptyStateTitle}>Have a conversation with your work documents and web data</h1>
                                 </div>
                             : //else Ungrounded
                                 <div>
                                     <div className={styles.chatEmptyStateHeader}> 
                                         <ChatSparkleFilled fontSize={"80px"} primaryFill={"rgba(0, 0, 0, 0.35)"} aria-hidden="true" aria-label="Chat logo" />
                                     </div>
-                                    <h1 className={styles.chatEmptyStateTitle}>Chat directly with a LLM</h1>
+                                    <h1 className={styles.chatEmptyStateTitle}>Have a conversation directly with a LLM</h1>
                                 </div>
                             }
                             <span className={styles.chatEmptyObjectives}>
-                                <i>Information Assistant uses AI. Check for mistakes.   </i><a href="https://github.com/microsoft/PubSec-Info-Assistant/blob/main/docs/transparency.md" target="_blank" rel="noopener noreferrer">Transparency Note</a>
+                                <i>Information Assistant uses AI. Check for mistakes.   </i>{/*<a href="https://github.com/microsoft/PubSec-Info-Assistant/blob/main/docs/transparency.md" target="_blank" rel="noopener noreferrer">Transparency Note</a>*/}
                             </span>
                             {activeChatMode != ChatMode.Ungrounded &&
                                 <div>
@@ -409,7 +409,7 @@ const Chat = () => {
                         )}
                         <QuestionInput
                             clearOnSend
-                            placeholder="Type a new question (e.g. Who are Microsoft's top executives, provided as a table?)"
+                            placeholder="Type a new question (e.g. What are some specific examples of the digital services implemented by the Home Office?)"
                             disabled={isLoading}
                             onSend={question => makeApiRequest(question, defaultApproach, {}, {}, {})}
                             onAdjustClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
